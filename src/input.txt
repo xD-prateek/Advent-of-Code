@@ -1,0 +1,4 @@
+HERE
+goes
+THE
+input

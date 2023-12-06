@@ -1,3 +1,8 @@
+use std::fs::read_to_string;
+
 fn main() {
-    println!("Hello, world!");
+    let file_name: &str = "src/input.txt";
+    let content = read_to_string(file_name).unwrap();
+
+    content.lines().for_each(|line| println!("{0}", line));
 }
