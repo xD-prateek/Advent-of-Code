@@ -47,10 +47,9 @@ fn fetch_first_num(line: String, map: &HashMap<String, u32>) -> Option<u32> {
     }
 }
 
-fn get_word(line: &str, vec_of_words: Vec<&str>) -> Option<String> {
-    while line.len() {
-        let matched_vec = vec_of_words.iter().filter(|ele| {
-           if line.chars().next().unwrap() == ele.chars().next().unwrap() 
-        });
-    }
+fn get_word(line: &str, vec_of_words: Vec<&str>) -> Option<&str> {
+    line.chars().skip_while(|ele| {
+    
+    });
+    None
 }
