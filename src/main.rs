@@ -22,10 +22,10 @@ fn main() {
 
     let mut ans: u32 = 0;
     content.lines().for_each(|line| {
-        println!("{0}", line);
+        // println!("{0}", line);
         let first_num = fetch_first_num(line.to_string() , &num_string_map);
         let last_num = fetch_first_num(line.chars().rev().collect::<String>(), &num_rev_string_map);
-
+        // println!("{0}{1}", first_num.unwrap(), last_num.unwrap());
         if let (Some(f), Some(l)) = (first_num, last_num) {
             ans += f * 10 + l;
         }
@@ -44,6 +44,7 @@ fn fetch_first_num(line: String, map: &HashMap<String, u32>) -> Option<u32> {
         let mut query = c.to_string();
         let mut vec = vec_of_words.clone();
         while !vec.is_empty() {
+            // println!("Query: {0}", query);
             vec.retain(|&ele| ele.starts_with(&query));
             if let Some(word) = vec.get(0) {
                 if i + word.len() <= line.len() && &line[i..i + word.len()] == *word {
@@ -51,7 +52,13 @@ fn fetch_first_num(line: String, map: &HashMap<String, u32>) -> Option<u32> {
                     return map.get(*word).cloned();
                 }
             }
-            query.push(line.chars().nth(i + query.len())?);
+
+            if let Some(c) = line.chars().nth(i + query.len()) {
+                match c.is_alphabetic() {
+                    true => query.push(c),
+                    false => break,
+                };
+            }
         }
     }
     None
