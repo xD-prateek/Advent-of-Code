@@ -18,14 +18,14 @@ fn main() {
             if sets_str.split(';').collect::<Vec<&str>>().iter().all(|set| {
                 set.split(',').all(|val| {
                     if let [no_str, color] = val.split_whitespace().collect::<Vec<&str>>().as_slice() {
-                        no_str.parse::<u32>().unwrap() < cubes.get(color).cloned().unwrap_or_else(|| panic!("Color cannot be found in map!"))
+                        no_str.parse::<u32>().unwrap() <= cubes.get(color).cloned().unwrap_or_else(|| panic!("Color cannot be found in map!"))
                     }
                     else {
-                        panic!("Some error in input.");
+                        panic!("Input format not correct");
                     }
                 })
             }) {
-                println!("{0}", id_str);
+                // println!("{0}", id_str);
                 ans += id_str.split_whitespace().nth(1).and_then(|s| s.parse::<u32>().ok()).expect("Not able to fetch ID");
             }
         }
