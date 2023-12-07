@@ -4,31 +4,16 @@ fn main() {
     let file_name: &str = "src/input.txt";
     let content = read_to_string(file_name).unwrap();
 
-    let no_of_cubes = vec!{
-        ("red", 12u32),
-        ("green", 13),
-        ("blue", 14)
-    };
-
-    let cubes = no_of_cubes.into_iter().collect::<HashMap<&str, u32>>();
-    let mut ans = 0u32;
-
-    content.lines().for_each(|line| {
-        if let [id_str, sets_str] = line.split(':').collect::<Vec<&str>>().as_slice() {
-            if sets_str.split(';').collect::<Vec<&str>>().iter().all(|set| {
-                set.split(',').all(|val| {
-                    if let [no_str, color] = val.split_whitespace().collect::<Vec<&str>>().as_slice() {
-                        no_str.parse::<u32>().unwrap() <= cubes.get(color).cloned().unwrap_or_else(|| panic!("Color cannot be found in map!"))
-                    }
-                    else {
-                        panic!("Input format not correct");
-                    }
-                })
-            }) {
-                // println!("{0}", id_str);
-                ans += id_str.split_whitespace().nth(1).and_then(|s| s.parse::<u32>().ok()).expect("Not able to fetch ID");
-            }
-        }
-    });
+    let ans:u32 = content.lines().map(|line| {
+        line.split(':').nth(1).unwrap_or_default().split(';').flat_map(|set| {
+            set.split(',').filter_map(|subset| {
+                let mut str_iter = subset.split_whitespace();
+                Some((str_iter.next()?.parse::<u32>().unwrap_or_default(), str_iter.next()?,))
+            })
+        }).fold(HashMap::new(), |mut min_cubes, (no, color)| {
+            min_cubes.entry(color).and_modify(|v| *v = no.max(*v)).or_insert(no);
+            min_cubes
+        }).values().product::<u32>()
+    }).sum();
     println!("ANS: {0}", ans);
 }
