@@ -64,9 +64,9 @@ fn main() {
     })).collect::<Vec<(i32, i32)>>();
 
     content.lines().enumerate().for_each(|(i, line)| {
-        line.chars().enumerate().filter(|&(_, c)| c != '.' && !c.is_digit(10)).for_each(|(j, _c)| {
+        line.chars().enumerate().filter(|&(_, c)| c == '*').for_each(|(j, _c)| {
             // println!("found {0} at ({1}, {2})", _c, i, j);
-            movement.iter().filter_map(|(x, y)| {
+            let found_nums = movement.iter().filter_map(|(x, y)| {
                 let v = i as i32 + x;
                 let h = j as i32 + y;
                 if v < 0 || h < 0 {
@@ -75,22 +75,28 @@ fn main() {
                 else {
                     Some((v as u32, h as u32))
                 }
-            }).filter(|&(x, y)| content.lines().nth(x as usize).and_then(|l| l.chars().nth(y as usize)).unwrap().is_digit(10)).for_each(|(x, y)| {
-                    // println!("Checking ({1}, {2}) for {0}", c, x, y);
-                    if let Some(v) = nums.get_mut(&x) {
-                        v.retain(|num| {
-                            if num.start_end.0 <= y && num.start_end.1 >= y {
-                                ans += num.val;
-                                // println!("added {0} to ans. Ans = {1}", num.val, ans);
-                                false
-                            }
-                            else {
-                                true
-                            }
-                        });
-                        if v.is_empty() { nums.remove(&x); }
+            }).filter(|&(x, y)| content.lines().nth(x as usize).and_then(|l| l.chars().nth(y as usize)).unwrap().is_digit(10)).try_fold(Vec::new(), |mut acc, (x, y)| {
+                    if acc.len() > 2 {
+                        Err(())
                     }
-                });
+                    else {
+                        if let Some(v) = nums.get_mut(&x) {
+                            v.retain(|num| {
+                                if y >= num.start_end.0 && y <= num.start_end.1 {
+                                    acc.push(num.val);
+                                    false
+                                }
+                                else {
+                                    true
+                                }
+                            });
+                        }
+                        Ok(acc)
+                    }
+                }).unwrap();
+            if found_nums.len() == 2 {
+                ans += found_nums.into_iter().product::<u32>();
+            }
         })
     });
     println!("{0}", ans);
