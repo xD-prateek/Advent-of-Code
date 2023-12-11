@@ -27,10 +27,7 @@ fn main() {
     let almanac = read_to_string(file_name).unwrap();
     let s = almanac.lines().collect::<Vec<&str>>().split(|&line| line.is_empty()).map(|l| l.to_vec()).collect::<Vec<Vec<&str>>>();
     let mut content_iter = s.into_iter();
-    let seeds = content_iter.next().map(|s| s.get(0).unwrap_or_else(|| panic!("seeds not found...")).split(':').nth(1).unwrap_or_else(|| panic!("error reading seeds...")).split_whitespace().flat_map(|num| num.parse::<u64>()).unwrap().collect::<Vec<u64>>()).unwrap().chunks(2).map(|c| (c[0], c[1])).flat_map(|(num, till)| {
-        (num..num+till).into_iter()
-    }).collect::<Vec<u64>>();
-    // println!("{0:?}", seeds);
+    let seeds_range = content_iter.next().into_iter().flat_map(|s| s.get(0).unwrap_or_else(|| panic!("seeds not found...")).split(':').nth(1).unwrap_or_else(|| panic!("error reading seeds...")).split_whitespace().map(|num| num.parse::<u64>().unwrap())).collect::<Vec<u64>>();
 
     let mapping = content_iter.map(|v| {
         v.into_iter().skip(1).fold(BTreeSet::new(), |mut acc, m| {
@@ -40,13 +37,34 @@ fn main() {
         })
     }).collect::<Vec<BTreeSet<Map>>>();
 
-    let ans = seeds.into_iter().map(|seed| {
-        mapping.iter().fold(seed, |source, m| {
-           match m.into_iter().find(|&ele| source >= ele.1 && source < ele.1 + ele.2) {
-                Some(ele) => source - ele.1 + ele.0,
-                None => source,
-            }
-        })
-    }).min().unwrap();
+    let ans = seeds_range.chunks(2).fold(u64::MAX,|mut acc, sr| {
+        let seed = sr[0];
+        let range = sr[1];
+        for s in seed..seed + range {
+            acc = acc.min(mapping.iter().fold(s, |source, m| {
+                match m.into_iter().find(|&ele| source >= ele.1 && source < ele.1 + ele.2) {
+                    Some(ele) => source - ele.1 + ele.0,
+                    None => source,
+                }
+            }))
+        }
+        acc
+    });
     println!("ANS: {0}", ans);
+}
+
+fn develop(nt: (u64, u64), bt: &BTreeSet<Map>) -> Vec<(u64, u64)> {
+    match bt.into_iter().find(|&ele| nt.0 >= ele.1 && nt.0 < ele.1 + ele.2) {
+        Some(m) => {
+            if nt.0 + nt.1 <= m.1 + m.2 {
+                vec!{(m.0 - m.1 + nt.0, nt.1)}
+            }
+            else {
+                let mut ans_vec = vec!{(m.0 - m.1 + nt.0, m.1 + m.2 - nt.0)};
+                ans_vec.append(&mut develop((m.1 + m.2 - nt.0, 2 * nt.0 + nt.1 - m.1 - m.2), bt));
+                ans_vec
+            }
+        },
+        None => todo!(),
+    }
 }
