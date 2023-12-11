@@ -27,7 +27,9 @@ fn main() {
     let almanac = read_to_string(file_name).unwrap();
     let s = almanac.lines().collect::<Vec<&str>>().split(|&line| line.is_empty()).map(|l| l.to_vec()).collect::<Vec<Vec<&str>>>();
     let mut content_iter = s.into_iter();
-    let seeds = content_iter.next().map(|s| s.get(0).unwrap_or_else(|| panic!("seeds not found...")).split(':').nth(1).unwrap_or_else(|| panic!("error reading seeds...")).split_whitespace().map(|num| num.parse::<u64>().unwrap()).collect::<Vec<u64>>()).unwrap();
+    let seeds = content_iter.next().map(|s| s.get(0).unwrap_or_else(|| panic!("seeds not found...")).split(':').nth(1).unwrap_or_else(|| panic!("error reading seeds...")).split_whitespace().flat_map(|num| num.parse::<u64>()).unwrap().collect::<Vec<u64>>()).unwrap().chunks(2).map(|c| (c[0], c[1])).flat_map(|(num, till)| {
+        (num..num+till).into_iter()
+    }).collect::<Vec<u64>>();
     // println!("{0:?}", seeds);
 
     let mapping = content_iter.map(|v| {
