@@ -1,7 +1,7 @@
 use std::{fs::read_to_string, collections::BTreeSet};
 
-#[derive(Eq)]
 // representing destination range start, source range start, range length
+#[derive(Eq, Debug)]
 struct Map(u64, u64, u64);
 
 impl PartialOrd for Map {
@@ -37,34 +37,40 @@ fn main() {
         })
     }).collect::<Vec<BTreeSet<Map>>>();
 
-    let ans = seeds_range.chunks(2).fold(u64::MAX,|mut acc, sr| {
-        let seed = sr[0];
-        let range = sr[1];
-        for s in seed..seed + range {
-            acc = acc.min(mapping.iter().fold(s, |source, m| {
-                match m.into_iter().find(|&ele| source >= ele.1 && source < ele.1 + ele.2) {
-                    Some(ele) => source - ele.1 + ele.0,
-                    None => source,
-                }
-            }))
-        }
-        acc
+    seeds_range.chunks(2).for_each(|nt| {
+        println!("Checking for: ({0}, {1})", nt[0], nt[1]);
+        println!("{0:?}",develop((nt[0],nt[1]), mapping.get(0).unwrap()));
+        println!("")
     });
-    println!("ANS: {0}", ans);
+    // let ans = seeds_range.chunks(2).fold(u64::MAX,|mut acc, sr| {
+    //     let seed = sr[0];
+    //     let range = sr[1];
+    //     for s in seed..seed + range {
+    //         acc = acc.min(mapping.iter().fold(s, |source, m| {
+    //             match m.into_iter().find(|&ele| source >= ele.1 && source < ele.1 + ele.2) {
+    //                 Some(ele) => source - ele.1 + ele.0,
+    //                 None => source,
+    //             }
+    //         }))
+    //     }
+    //     acc
+    // });
+    // println!("ANS: {0}", ans);
 }
 
 fn develop(nt: (u64, u64), bt: &BTreeSet<Map>) -> Vec<(u64, u64)> {
     match bt.into_iter().find(|&ele| nt.0 >= ele.1 && nt.0 < ele.1 + ele.2) {
         Some(m) => {
-            if nt.0 + nt.1 <= m.1 + m.2 {
-                vec!{(m.0 - m.1 + nt.0, nt.1)}
-            }
-            else {
-                let mut ans_vec = vec!{(m.0 - m.1 + nt.0, m.1 + m.2 - nt.0)};
-                ans_vec.append(&mut develop((m.1 + m.2 - nt.0, 2 * nt.0 + nt.1 - m.1 - m.2), bt));
-                ans_vec
+            println!("found {0:?}", m);
+            match nt.0 + nt.1 <= m.1 + m.2 {
+                true => vec!{(m.0 - m.1 + nt.0, nt.1)},
+                false => {
+                    let mut ans_vec = vec!{(m.0 - m.1 + nt.0, m.1 + m.2 - nt.0)};
+                    ans_vec.append(&mut develop((m.1 + m.2 - nt.0, 2 * nt.0 + nt.1 - m.1 - m.2), bt));
+                    ans_vec
+                }
             }
         },
-        None => todo!(),
+        None => vec!{nt},
     }
 }
