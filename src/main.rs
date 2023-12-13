@@ -59,6 +59,32 @@ fn main() {
 }
 
 fn develop(nt: (u64, u64), bt: &BTreeSet<Map>) -> Vec<(u64, u64)> {
+    bt.into_iter().filter(|&ele| !(nt.0 + nt.1 < ele.1 && nt.0 >= ele.1 + ele.2)).fold(vec!{(nt)}, |acc, m| {
+        acc.iter().fold(Vec::new(), |mut b_acc, n| {
+            if n.0 < m.1 && n.0 + n.1 < m.1 + m.2 {
+                b_acc.push((n.0, m.1));
+                b_acc.push((m.0, n.0 + n.1 - m.1 + m.0));
+            }
+            else if n.0 > m.1 && n.0 + n.1 > m.1 + m.2 {
+                b_acc.push((n.0 - m.1 + m.0, m.0 + m.2));
+                b_acc.push((m.0 + m.2, n.0 + n.1));
+            }
+            else if n.0 >= m.1 && n.0 + n.1 <= m.1 + m.2 {
+                b_acc.push((m.0, n.0 - m.1 + m.0));
+                b_acc.push((n.0 - m.1 + m.0, n.0 + n.1 - m.1 + m.0));
+                b_acc.push((n.0 + n.1 - m.1 + m.0, m.0 + m.2));
+            }
+            else if n.0 < m.1 && n.0 + n.1 > m.1 + m.2 {
+                b_acc.push((n.0, m.1));
+                b_acc.push((m.0, m.0 + m.2));
+                b_acc.push((m.1 + m.2, n.0 + n.1));
+            }
+            else {
+                b_acc.push((n.0, n.1));
+            }
+            b_acc
+        })
+    });
     match bt.into_iter().find(|&ele| nt.0 >= ele.1 && nt.0 < ele.1 + ele.2) {
         Some(m) => {
             println!("found {0:?}", m);
