@@ -37,66 +37,57 @@ fn main() {
         })
     }).collect::<Vec<BTreeSet<Map>>>();
 
-    seeds_range.chunks(2).for_each(|nt| {
-        println!("Checking for: ({0}, {1})", nt[0], nt[1]);
-        println!("{0:?}",develop((nt[0],nt[1]), mapping.get(0).unwrap()));
-        println!("")
-    });
-    // let ans = seeds_range.chunks(2).fold(u64::MAX,|mut acc, sr| {
-    //     let seed = sr[0];
-    //     let range = sr[1];
-    //     for s in seed..seed + range {
-    //         acc = acc.min(mapping.iter().fold(s, |source, m| {
-    //             match m.into_iter().find(|&ele| source >= ele.1 && source < ele.1 + ele.2) {
-    //                 Some(ele) => source - ele.1 + ele.0,
-    //                 None => source,
-    //             }
-    //         }))
-    //     }
-    //     acc
-    // });
-    // println!("ANS: {0}", ans);
+    let ans = seeds_range.chunks(2).map(|nr| get_min_location((nr[0], nr[1]), &mapping)).min().unwrap();
+
+    println!("ANS: {0}", ans);
 }
 
-fn develop(nt: (u64, u64), bt: &BTreeSet<Map>) -> Vec<(u64, u64)> {
-    bt.into_iter().filter(|&ele| !(nt.0 + nt.1 < ele.1 && nt.0 >= ele.1 + ele.2)).fold(vec!{(nt)}, |acc, m| {
-        acc.iter().fold(Vec::new(), |mut b_acc, n| {
-            if n.0 < m.1 && n.0 + n.1 < m.1 + m.2 {
-                b_acc.push((n.0, m.1));
-                b_acc.push((m.0, n.0 + n.1 - m.1 + m.0));
-            }
-            else if n.0 > m.1 && n.0 + n.1 > m.1 + m.2 {
-                b_acc.push((n.0 - m.1 + m.0, m.0 + m.2));
-                b_acc.push((m.0 + m.2, n.0 + n.1));
-            }
-            else if n.0 >= m.1 && n.0 + n.1 <= m.1 + m.2 {
-                b_acc.push((m.0, n.0 - m.1 + m.0));
-                b_acc.push((n.0 - m.1 + m.0, n.0 + n.1 - m.1 + m.0));
-                b_acc.push((n.0 + n.1 - m.1 + m.0, m.0 + m.2));
-            }
-            else if n.0 < m.1 && n.0 + n.1 > m.1 + m.2 {
-                b_acc.push((n.0, m.1));
-                b_acc.push((m.0, m.0 + m.2));
-                b_acc.push((m.1 + m.2, n.0 + n.1));
+fn get_min_location(seeds: (u64, u64), bt_map: &Vec<BTreeSet<Map>>) -> u64 {
+    bt_map.into_iter().fold(vec!{seeds}, |carry_forward, m| {
+        carry_forward.into_iter().fold(Vec::new(), |mut acc, seed| {
+            let mut new_map = create_mapping(seed, m).unwrap();
+            acc.append(&mut new_map);
+            acc
+        })
+    }).into_iter().map(|(first, _)| first).min().unwrap()
+}
+
+fn create_mapping(seeds: (u64, u64), bt: &BTreeSet<Map>) -> Result<Vec<(u64, u64)>, String> {
+    let mut map_iter = bt.into_iter().filter(|&m| !(m.1 + m.2 < seeds.0 || m.1 >= seeds.0 + seeds.1)).peekable();
+    if let None = map_iter.peek() {
+        return Ok(vec!{seeds});
+    }
+    // until is not included
+    let mut until = seeds.0;
+
+    let mut transformed = Vec::new();
+    while let Some(m) = map_iter.next() {
+        if m.1 <= seeds.0 {
+            if m.1 + m.2 < seeds.0 + seeds.1 {
+                until = m.1 + m.2;
+                transformed.push((seeds.0 + m.0 - m.1 , until - seeds.0));
             }
             else {
-                b_acc.push((n.0, n.1));
+                until = seeds.0 + seeds.1;
+                transformed.push((seeds.0 + m.0 - m.1, seeds.1));
             }
-            b_acc
-        })
-    });
-    match bt.into_iter().find(|&ele| nt.0 >= ele.1 && nt.0 < ele.1 + ele.2) {
-        Some(m) => {
-            println!("found {0:?}", m);
-            match nt.0 + nt.1 <= m.1 + m.2 {
-                true => vec!{(m.0 - m.1 + nt.0, nt.1)},
-                false => {
-                    let mut ans_vec = vec!{(m.0 - m.1 + nt.0, m.1 + m.2 - nt.0)};
-                    ans_vec.append(&mut develop((m.1 + m.2 - nt.0, 2 * nt.0 + nt.1 - m.1 - m.2), bt));
-                    ans_vec
-                }
+        }
+        else {
+            if m.1 > until {
+                transformed.push((until, m.1 - until));
             }
-        },
-        None => vec!{nt},
+            if seeds.0 + seeds.1 > m.1 && seeds.0 + seeds.1 <= m.1 + m.2 {
+                until = seeds.0 + seeds.1;
+                transformed.push((m.0, until - m.1));
+            }
+            else {
+                until = m.1 + m.2;
+                transformed.push((m.0, m.2));
+            }
+        }
+        if map_iter.peek() == None && until != seeds.0 + seeds.1 {
+            transformed.push((until, seeds.0 + seeds.1 - until));
+        }
     }
+    Ok(transformed)
 }
