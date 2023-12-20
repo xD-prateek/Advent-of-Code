@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::cmp::Ordering;
 
 #[derive(Eq)]
-pub struct Hand(String);
+pub struct Hand(pub String);
 
 impl PartialOrd for Hand {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -38,18 +38,25 @@ impl Hand {
 
     fn get_kind(&self) -> u8 {
         // priority from 1u32..=5
-        let val = self.0.chars().fold(HashMap::new(), |mut acc, c| {
+        // 1 being least, 5 being highest priority
+        let mut char_count_map = self.0.clone().chars().fold(HashMap::new(), |mut acc, c| {
             acc.entry(c).and_modify(|instance| *instance += 1).or_insert(1);
             acc
-        }).values().cloned().collect::<Vec<u32>>();
+        });
 
-        match val.len() {
+        if let Some((&lucky_char, _)) = char_count_map.iter().filter(|&(&k, _)| k != 'J').max_by_key(|&(_, v)| v) {
+            let j_count = char_count_map.remove(&'J').unwrap_or(0);
+            char_count_map.entry(lucky_char).and_modify(|e| *e += j_count);
+        }
+
+        let vals = char_count_map.into_values().collect::<Vec<u8>>();
+        match vals.len() {
             1 => 7,
-            2 => match val.contains(&4) {
+            2 => match vals.contains(&4) {
                 true => 6,
                 false => 5,
             },
-            3 => match val.contains(&3) {
+            3 => match vals.contains(&3) {
                 true => 4,
                 false => 3,
             },
@@ -104,11 +111,12 @@ impl Ord for Card {
                 (_, Self::K) => Ordering::Less,
                 (Self::Q ,_) => Ordering::Greater,
                 (_, Self::Q) => Ordering::Less,
-                (Self::J, _) => Ordering::Greater,
-                (_, Self::J) => Ordering::Less,
                 (Self::T, _) => Ordering::Greater,
                 (_, Self::T) => Ordering::Less,
+                (Self::Number(_), Self::J) => Ordering::Greater,
+                (Self::J, Self::Number(_)) => Ordering::Less,
                 (Self::Number(s), Self::Number(o)) => s.cmp(o),
+                _ => Ordering::Equal,
             },
         }
     }
