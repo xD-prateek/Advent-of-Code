@@ -18,17 +18,28 @@ fn main() {
     });
     // println!("{0:#?}", map);
 
-    let mut next = "AAA";
+    let mut next = map.keys().filter_map(|&key| {
+        match key.ends_with('A') {
+            true => Some(key),
+            false => None,
+        }
+    }).collect::<Vec<&str>>();
+
     let mut ans = 0u32;
-
-    while next != "ZZZ" {
+    while !next.iter().all(|val| val.ends_with('Z')) {
+        let direction = directions_iter.next().unwrap();
+        println!("{0:?}. Now going {1}!", next, match direction {
+        R => "right",
+        L => "left",
+        });
         use Dir::{R, L};
-        next = match directions_iter.next().unwrap() {
-            L => map.get(next).unwrap().0,
-            R => map.get(next).unwrap().1,
-        };
+        next.iter_mut().for_each(|key| {
+            *key = match &direction {
+                L => map.get(key).unwrap().0,
+                R => map.get(key).unwrap().1,
+            };
+        });
         ans += 1;
-
     }
     println!("ANS: {0}", ans);
 }
