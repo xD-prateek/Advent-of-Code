@@ -16,6 +16,6 @@ fn main() {
 fn get_next(reading: Vec<i32>) -> i32 {
     match reading.iter().all(|&num| num == 0) {
         true => 0,
-        false => reading.last().unwrap() + get_next(reading.windows(2).map(|ele| ele[1] - ele[0]).collect::<Vec<i32>>()),
+        false => reading.first().unwrap() - get_next(reading.windows(2).map(|ele| ele[1] - ele[0]).collect::<Vec<i32>>()),
     }
 }
