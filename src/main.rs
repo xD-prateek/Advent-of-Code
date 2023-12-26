@@ -7,6 +7,4 @@ fn main() {
     let content = read_to_string(file_name).unwrap();
     let ans = Map::from(content).get_farthest_distance();
     println!("ANS: {0}", ans);
-
 }
-
