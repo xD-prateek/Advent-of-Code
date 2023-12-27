@@ -45,12 +45,10 @@ impl Map {
                     if let Some(point) = next_coordinates_iter.next() {
                         match self.max_distance(point.0, point.1) {
                             Path::Closed(d) => {
-                                println!("Found it to be closed with length: {0}", d);
                                 ans = ans.max((d + 1) / 2);
                                 take_next_path = false;
                             },
                             Path::Open(d) => {
-                                println!("Found it to be open with length: {0}", d);
                                 ans = ans.max(d);
                                 take_next_path = true;
                             },
@@ -69,6 +67,7 @@ impl Map {
         if let Some(mut previous_coordinate) = self.start {
             let mut max_dist = 1u32;
             loop {
+                // println!("current_coordinate: {0:?}, current_char: {1}", current_coordinate, current_char);
                 // process current char
                 let dir = match current_char {
                     '-' => match previous_coordinate.1 + 1 == current_coordinate.1 {
@@ -76,12 +75,12 @@ impl Map {
                         false => Some(Direction::West),
                     },
                     '|' => match previous_coordinate.0 + 1 == current_coordinate.0 {
-                        true => Some(Direction::North),
-                        false => Some(Direction::South),
+                        true => Some(Direction::South),
+                        false => Some(Direction::North),
                     },
-                    '7' => match previous_coordinate.0 + 1 == current_coordinate.0 {
-                        true => Some(Direction::West),
-                        false => Some(Direction::South),
+                    '7' => match previous_coordinate.1 + 1 == current_coordinate.1 {
+                        true => Some(Direction::South),
+                        false => Some(Direction::West),
                     },
                     'J' => match previous_coordinate.1 + 1 == current_coordinate.1 {
                         true => Some(Direction::North),
@@ -91,7 +90,7 @@ impl Map {
                         true => Some(Direction::East),
                         false => Some(Direction::North),
                     },
-                    'F' => match current_coordinate.0 + 1 == previous_coordinate.0 {
+                    'F' => match current_coordinate.1 + 1 == previous_coordinate.1 {
                         true => Some(Direction::South),
                         false => Some(Direction::East),
                     },
