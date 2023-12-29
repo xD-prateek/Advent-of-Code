@@ -20,9 +20,9 @@ impl From<String> for Map {
 }
 
 impl Map {
-    pub fn get_farthest_distance(&self) -> Vec<usize, usize> {
+    pub fn get_pipe_coordinates(&self) -> Vec<(usize, usize)> {
         match self.start {
-            None => 0,
+            None => vec!{},
             Some(start) => {
                 // get starting points
                 let mut next_coordinate = self.check_north(start);
@@ -33,12 +33,15 @@ impl Map {
                     next_coordinate = self.check_south(start);
                 }
                 assert!(next_coordinate.is_some(), "Loop not present in input.");
-                let path: Vec<(usize, usize)> = vec!{ start };
+
+                let mut path: Vec<(usize, usize)> = vec!{ start };
                 let mut previous_coordinate = start;
-                let mut current_coordinate = next_coordinate.0;
-                let mut current_char = next_coordinate.1;
+                let nc = next_coordinate.unwrap();
+                let mut current_coordinate = nc.0;
+                let mut current_char = nc.1;
 
                 while 'S' != current_char {
+                    println!("previous coordinate: {1:?}, current coordinate: {0:?}, current_char: {2}", previous_coordinate, current_coordinate, current_char);
                     path.push(current_coordinate);
                     let dir = match Pipe::new(current_char).unwrap() {
                         Pipe::Horizontal => match previous_coordinate.1 + 1 == current_coordinate.1 {
@@ -68,74 +71,78 @@ impl Map {
                     };
                     current_char = self.next(dir, &mut previous_coordinate, &mut current_coordinate);
                 }
-                println!("Path: {0:?}", path);
                 path
-    }
-}
-}
-
-
-fn next(&self, dir: Direction, previous_coordinate: &mut (usize, usize), current_coordinate: &mut (usize, usize)) -> char {
-    let info = match dir {
-        Direction::North => self.check_north(current_coordinate.clone()),
-        Direction::East => self.check_east(current_coordinate.clone()),
-        Direction::South => self.check_south(current_coordinate.clone()),
-        Direction::West => self.check_west(current_coordinate.clone()),
-    }.unwrap(); 
-    (*previous_coordinate, *current_coordinate) = (*current_coordinate, info.0);
-    info.1
-}
-
-
-fn check_north(&self, mut coordinate: (usize, usize)) -> Option<Info> {
-    match coordinate {
-        (0, _) => None,
-        _ => {
-            coordinate.0 -= 1;
-            match self.map.get(coordinate.0).unwrap().get(coordinate.1).unwrap() {
-                &ch@ ('7' | '|' | 'F' | 'S') => Some(Info(coordinate, ch)),
-                _ => None,
             }
-        },
+        }
     }
-}
 
-fn check_south(&self, mut coordinate: (usize, usize)) -> Option<Info> {
-    coordinate.0 += 1;
-    match self.map.get(coordinate.0) {
-        None => None,
-        Some(line) => {
-            match line.get(coordinate.1).unwrap() {
-                &ch@ ('J' | '|' | 'L' | 'S') => Some(Info(coordinate, ch)),
+
+    fn next(&self, dir: Direction, previous_coordinate: &mut (usize, usize), current_coordinate: &mut (usize, usize)) -> char {
+        let info = match dir {
+            Direction::North => self.check_north(current_coordinate.clone()),
+            Direction::East => self.check_east(current_coordinate.clone()),
+            Direction::South => self.check_south(current_coordinate.clone()),
+            Direction::West => self.check_west(current_coordinate.clone()),
+        }.unwrap(); 
+        (*previous_coordinate, *current_coordinate) = (*current_coordinate, info.0);
+        info.1
+    }
+
+
+    fn check_north(&self, mut coordinate: (usize, usize)) -> Option<Info> {
+        match coordinate {
+            (0, _) => None,
+            _ => {
+                coordinate.0 -= 1;
+                match self.map.get(coordinate.0).unwrap().get(coordinate.1).unwrap() {
+                    &ch@ ('7' | '|' | 'F' | 'S') => Some(Info(coordinate, ch)),
+                    _ => None,
+                }
+            },
+        }
+    }
+
+    fn check_south(&self, mut coordinate: (usize, usize)) -> Option<Info> {
+        coordinate.0 += 1;
+        match self.map.get(coordinate.0) {
+            None => None,
+            Some(line) => {
+                match line.get(coordinate.1).unwrap() {
+                    &ch@ ('J' | '|' | 'L' | 'S') => Some(Info(coordinate, ch)),
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    fn check_east(&self, mut coordinate: (usize, usize)) -> Option<Info> {
+        coordinate.1 += 1;
+        match self.map.get(coordinate.0).unwrap().get(coordinate.1) {
+            None => None,
+            Some(ch) => match ch {
+                &ch@ ('J' | '-' | '7' | 'S') => Some(Info(coordinate, ch)),
                 _ => None,
             }
         }
     }
-}
 
-fn check_east(&self, mut coordinate: (usize, usize)) -> Option<Info> {
-    coordinate.1 += 1;
-    match self.map.get(coordinate.0).unwrap().get(coordinate.1) {
-        None => None,
-        Some(ch) => match ch {
-            &ch@ ('J' | '-' | '7' | 'S') => Some(Info(coordinate, ch)),
-            _ => None,
+    fn check_west(&self, mut coordinate: (usize, usize)) -> Option<Info> {
+        match coordinate {
+            (_, 0) => None,
+            _ => {
+                coordinate.1 -= 1;
+                match self.map.get(coordinate.0).unwrap().get(coordinate.1).unwrap() {
+                    &ch@ ('L' | '-' | 'F' | 'S') => Some(Info(coordinate, ch)),
+                    _ => None,
+                }
+            },
         }
     }
-}
 
-fn check_west(&self, mut coordinate: (usize, usize)) -> Option<Info> {
-    match coordinate {
-        (_, 0) => None,
-        _ => {
-            coordinate.1 -= 1;
-            match self.map.get(coordinate.0).unwrap().get(coordinate.1).unwrap() {
-                &ch@ ('L' | '-' | 'F' | 'S') => Some(Info(coordinate, ch)),
-                _ => None,
-            }
-        },
+    pub fn get_enclosed_area(&self) {
+       let pipe = self.get_pipe_coordinates(); 
+       println!("Coordinates: {0:?}", pipe);
     }
-}
 }
 
 struct Info((usize, usize), char);
@@ -164,7 +171,7 @@ impl Pipe {
             'F' => Some(Self::F),
             'L' => Some(Self::L),
             '|' => Some(Self::Vertical),
-            '-' => Some(Self::Vertical),
+            '-' => Some(Self::Horizontal),
             _ => None,
         }
     }
