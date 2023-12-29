@@ -20,118 +20,70 @@ impl From<String> for Map {
 }
 
 impl Map {
-    pub fn get_farthest_distance(&self) -> u32 {
+    pub fn get_farthest_distance(&self) -> Vec<usize, usize> {
         match self.start {
             None => 0,
             Some(start) => {
                 // get starting points
-                let mut next_coordinates = Vec::new();
-                if let Some(info) = self.check_north(start) {
-                    next_coordinates.push(info);
+                let mut next_coordinate = self.check_north(start);
+                if next_coordinate.is_none() {
+                    next_coordinate = self.check_east(start);
                 }
-                if let Some(info) = self.check_south(start) {
-                    next_coordinates.push(info);
+                if next_coordinate.is_none() {
+                    next_coordinate = self.check_south(start);
                 }
-                if let Some(info) = self.check_east(start) {
-                    next_coordinates.push(info);
-                }
-                if let Some(info) = self.check_west(start) {
-                    next_coordinates.push(info);
-                }
-                let mut ans = 0u32;
-                let mut next_coordinates_iter = next_coordinates.into_iter();
-                let mut take_next_path = true;
-                while take_next_path {
-                    if let Some(point) = next_coordinates_iter.next() {
-                        match self.max_distance(point.0, point.1) {
-                            Path::Closed(d) => {
-                                ans = ans.max((d + 1) / 2);
-                                take_next_path = false;
-                            },
-                            Path::Open(d) => {
-                                ans = ans.max(d);
-                                take_next_path = true;
-                            },
-                        }
-                    }
-                    else {
-                        break;
-                    }
-                }
-                ans
-            }, 
-        }
-    }
+                assert!(next_coordinate.is_some(), "Loop not present in input.");
+                let path: Vec<(usize, usize)> = vec!{ start };
+                let mut previous_coordinate = start;
+                let mut current_coordinate = next_coordinate.0;
+                let mut current_char = next_coordinate.1;
 
-    fn max_distance(&self, mut current_coordinate: (usize, usize), mut current_char: char) -> Path {
-        if let Some(mut previous_coordinate) = self.start {
-            let mut max_dist = 1u32;
-            loop {
-                // println!("current_coordinate: {0:?}, current_char: {1}", current_coordinate, current_char);
-                // process current char
-                let dir = match current_char {
-                    '-' => match previous_coordinate.1 + 1 == current_coordinate.1 {
-                        true => Some(Direction::East),
-                        false => Some(Direction::West),
-                    },
-                    '|' => match previous_coordinate.0 + 1 == current_coordinate.0 {
-                        true => Some(Direction::South),
-                        false => Some(Direction::North),
-                    },
-                    '7' => match previous_coordinate.1 + 1 == current_coordinate.1 {
-                        true => Some(Direction::South),
-                        false => Some(Direction::West),
-                    },
-                    'J' => match previous_coordinate.1 + 1 == current_coordinate.1 {
-                        true => Some(Direction::North),
-                        false => Some(Direction::West),
-                    },
-                    'L' => match previous_coordinate.0 + 1 == current_coordinate.0 {
-                        true => Some(Direction::East),
-                        false => Some(Direction::North),
-                    },
-                    'F' => match current_coordinate.1 + 1 == previous_coordinate.1 {
-                        true => Some(Direction::South),
-                        false => Some(Direction::East),
-                    },
-                _ =>  None, // some different character
-            };
-
-            if let Some(dir) = dir {
-                match self.next(dir, &mut previous_coordinate, &mut current_coordinate) {
-                    Some(ch) => {
-                        if ch == 'S' {
-                            return Path::Closed(max_dist);
-                        }
-                        current_char = ch;
-                        max_dist += 1;
-                    },
-                    None => return Path::Open(max_dist), // next is out of bounds or not connected to pipe
+                while 'S' != current_char {
+                    path.push(current_coordinate);
+                    let dir = match Pipe::new(current_char).unwrap() {
+                        Pipe::Horizontal => match previous_coordinate.1 + 1 == current_coordinate.1 {
+                            true => Direction::East,
+                            false => Direction::West,
+                        },
+                        Pipe::Vertical => match previous_coordinate.0 + 1 == current_coordinate.0 {
+                            true => Direction::South,
+                            false => Direction::North,
+                        },
+                        Pipe::Seven => match previous_coordinate.1 + 1 == current_coordinate.1 {
+                            true => Direction::South,
+                            false => Direction::West,
+                        },
+                        Pipe::J => match previous_coordinate.1 + 1 == current_coordinate.1 {
+                            true => Direction::North,
+                            false => Direction::West,
+                        },
+                        Pipe::L => match previous_coordinate.0 + 1 == current_coordinate.0 {
+                            true => Direction::East,
+                            false => Direction::North,
+                        },
+                        Pipe::F => match current_coordinate.1 + 1 == previous_coordinate.1 {
+                            true => Direction::South,
+                            false => Direction::East,
+                        },
+                    };
+                    current_char = self.next(dir, &mut previous_coordinate, &mut current_coordinate);
                 }
-            }
-            else {
-                return Path::Open(max_dist); // some other character
-            }
-        }  
-    }
-    else {
-        Path::Closed(0)
+                println!("Path: {0:?}", path);
+                path
     }
 }
+}
 
-fn next(&self, dir: Direction, previous_coordinate: &mut (usize, usize), current_coordinate: &mut (usize, usize)) -> Option<char> {
-    if let Some(info) = match dir {
+
+fn next(&self, dir: Direction, previous_coordinate: &mut (usize, usize), current_coordinate: &mut (usize, usize)) -> char {
+    let info = match dir {
         Direction::North => self.check_north(current_coordinate.clone()),
         Direction::East => self.check_east(current_coordinate.clone()),
         Direction::South => self.check_south(current_coordinate.clone()),
         Direction::West => self.check_west(current_coordinate.clone()),
-    } {
-        (*previous_coordinate, *current_coordinate) = (*current_coordinate, info.0);
-        Some(info.1)
-    }
-    else {
-        None
-    }
+    }.unwrap(); 
+    (*previous_coordinate, *current_coordinate) = (*current_coordinate, info.0);
+    info.1
 }
 
 
@@ -186,11 +138,6 @@ fn check_west(&self, mut coordinate: (usize, usize)) -> Option<Info> {
 }
 }
 
-enum Path {
-    Closed(u32),
-    Open(u32),
-}
-
 struct Info((usize, usize), char);
 
 enum Direction {
@@ -199,3 +146,26 @@ enum Direction {
     West,
     South,
 }
+
+enum Pipe {
+    Horizontal,
+    Vertical,
+    Seven,
+    F,
+    J,
+    L,
+}
+
+impl Pipe {
+    fn new(c: char) -> Option<Self> {
+        match c {
+            '7' => Some(Self::Seven),
+            'J' => Some(Self::J),
+            'F' => Some(Self::F),
+            'L' => Some(Self::L),
+            '|' => Some(Self::Vertical),
+            '-' => Some(Self::Vertical),
+            _ => None,
+        }
+    }
+} 
