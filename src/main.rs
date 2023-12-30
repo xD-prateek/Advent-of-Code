@@ -7,7 +7,7 @@ fn main() {
     let mut galaxies = content.lines().enumerate().flat_map(|(y, line)| line.char_indices().filter(|&(_, c)| c == '#').map(move |(x, _)| (y as u32, x as u32))).collect::<Vec<(u32, u32)>>();
 
     let empty_y = (0..galaxies.iter().map(|&(y, _)| y).max().unwrap_or_default()).filter(|num| galaxies.iter().all(|(y, _)| y != num)).collect::<Vec<u32>>();
-    let empty_x = (0..galaxies.iter().map(|&(y, _)| y).max().unwrap_or_default()).filter(|num| galaxies.iter().all(|(_, x)| x != num)).collect::<Vec<u32>>();
+    let empty_x = (0..galaxies.iter().map(|&(_, x)| x).max().unwrap_or_default()).filter(|num| galaxies.iter().all(|(_, x)| x != num)).collect::<Vec<u32>>();
 
     galaxies.iter_mut().for_each(|(y, x)| {
         *y += empty_y.iter().filter(|&line| line < y).count() as u32;
