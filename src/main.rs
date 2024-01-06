@@ -6,7 +6,7 @@ fn main() {
 
     let ans = content.lines().fold(0u32, |acc, line| {
         let mut record_iter = line.split_whitespace().into_iter();
-        let (spring_map, mut contiguous_springs) = (String::from(record_iter.next().unwrap_or_else(|| panic!("Input error! Spring map not found."))), record_iter.next().unwrap_or_else(|| panic!("Input error! Contiguous spring array not found.")).split(',').map(|c| c.parse::<usize>().unwrap_or_else(|_| panic!("Error parsing. Invalid Input!"))).rev().collect::<Vec<usize>>());
+        let (spring_map, mut contiguous_springs) = (String::from(record_iter.next().unwrap_or_else(|| panic!("Input error! Spring map not found."))), record_iter.next().unwrap_or_else(|| panic!("Input error! Contiguous spring array not found.")).split(',').map(|c| c.parse::<usize>().unwrap_or_else(|_| panic!("Error parsing. Invalid Input!"))).collect::<Vec<usize>>());
 
         acc + permutations(&spring_map, &mut contiguous_springs)
     });
@@ -14,35 +14,50 @@ fn main() {
     println!("ANS: {0}", ans);
 }
 
-fn permutations(row_of_springs: &str, contiguous_springs: &mut Vec<usize>) -> u32 {
-    println!("row_of_springs: {0}, contiguous_springs: {1:?}", row_of_springs, contiguous_springs);
-    match contiguous_springs.pop() {
-        Some(matched) => {
-            println!("To match: {0}", matched);
-            let mut springs = row_of_springs.char_indices();
-        // put in loop
-        let mut ans = 0u32;
-        for i in 0..contiguous_springs.iter().sum::<usize>() - contiguous_springs.len() + matched - 1 {
-            let springs_iter = springs.by_ref();
-            if springs_iter.skip(i).take(matched).all(|(_, c)| c != '.') {
-                println!("MATCHED! ans: {0}", ans);
-                // ans += 1;
-                // its is a valid match
-                match springs_iter.next() {
-                    Some((i, c)) if c != '#' => {
-                        let next_slice = &row_of_springs[i + 1..];
-                        // if the remaining length is greater than the remaining sum, then go for furthur permutations
-                        // if the remaining length id equal to the remaining sum, add 1
-                        // else return 0
-                        ans += permutations(next_slice, contiguous_springs)
+fn permutations(row_of_springs: &str, contiguous_springs: &[usize]) -> u32 {
+    let row_of_springs = row_of_springs.trim_matches(|c| c == '.');
+    match contiguous_springs.first() {
+        Some(&matched) => {
+            let springs = row_of_springs.char_indices();
+            let no_of_iterations = {
+                let remaining_len = match contiguous_springs[1..].iter().sum::<usize>() + contiguous_springs[1..].len() {
+                    0 => 0,
+                    n => n - 1,
+                };
+                match row_of_springs.len() + 1 < remaining_len + matched {
+                    false => {
+                        let max_iterations = row_of_springs.len() + 1 - remaining_len - matched;
+                        match row_of_springs.find('#') {
+                            Some(back_limit) => max_iterations.min(back_limit + 1),
+                            None => max_iterations,
+                        }
                     },
-                    None => return ans + 1,
-                    _ => continue,
+                    true => return 0,
                 }
-            }
+            };
+            (0..no_of_iterations).fold(0u32, |acc, i| {
+                let mut springs_iter = springs.clone();
+                match springs_iter.by_ref().skip(i).take(matched).all(|(_, c)| c != '.') {
+                    true => {
+                        if let Some((j, c)) = springs_iter.next() {
+                            match c != '#' {
+                                true => {
+                                    acc + match contiguous_springs.len() {
+                                        1 if !row_of_springs[j..].contains('#') => 1,
+                                        _ => permutations(&row_of_springs[j + 1..], &contiguous_springs[1..]),
+                                    }
+                                },
+                                false => acc,
+                            }
+                        }
+                        else {
+                            acc + 1
+                        }
+                    },
+                    false => acc,
+                }
+            })
         }
-        ans
+        None => 0,
     }
-    None => 0
-}
 }
