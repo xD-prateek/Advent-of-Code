@@ -22,6 +22,17 @@ fn get_previous_columns(valley: &str) -> usize {
 }
 
 fn get_above_rows(valley: &str) -> usize {
-    // println!("valley horiz: {0}", valley);
+    println!("Valley: \n{0}", valley);
+    let mut lines = valley.lines().enumerate().peekable();
+    let mirror = loop {
+        if let Some(line) = lines.next() {
+            if let Some(&next_line) = lines.peek() {
+                if line.1 == next_line.1 {
+                    break line.0;
+                }
+            }
+        }
+    };
+    println!("above rows: {0}", mirror);
     0
 }
