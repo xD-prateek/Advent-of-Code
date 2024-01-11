@@ -9,70 +9,36 @@ fn main() {
 }
 
 fn get_columns_before_mirror(valley: &str) -> usize {
-    let mut lines_iter = valley.lines();
-    let mut smudge_fixed = false;
-    let potential_mirrors = {
-        let first_line = lines_iter.next().unwrap();
-        (1..first_line.len()).filter(|&i| {
-            let left = &first_line[..i];
-            let right = &first_line[i..];
-            match right.chars().zip(left.chars().rev()).filter(|(a, b)| a != b).count() {
-                1 => {
-                    smudge_fixed = true;
+    let lines_iter = valley.lines();
+    let mut potential_mirrors = vec!{0usize; lines_iter.by_ref().next().unwrap_or("").len()};
+    // for each line
+    //      for each i
+    //          iretain the index if a != b count == 0 or 1
+
+    lines_iter.for_each(|line| {
+        let ans = potential_mirrors.iter_mut().enumerate().filter(|(&i, &val)| {
+            let (left, right) = line.split_at(i + 1);
+            match right.chars().zip(left.chars().rev()).filter(|(a, b)| a != b) == 1 {
+                true => {
+                    *val += 1;
                     true
                 }
-                0 => true,
-                _ => false,
-            }
-        }).collect::<Vec<usize>>()
-    };
-
-    let mirror = lines_iter.fold(potential_mirrors, |mut acc, line| {
-        acc.retain(|&i| {
-            let left = &line[..i];
-            let right = &line[i..];
-            match smudge_fixed {
-                true => right.chars().zip(left.chars().rev()).all(|(a, b)| a == b),
-                false => {
-                    match right.chars().zip(left.chars().rev()).filter(|(a, b)| a != b).count() {
-                        1 => {
-                            smudge_fixed = true;
-                            true
-                        }
-                        0 => true,
-                        _ => false,
-                    }
-                },
+                false => false,
             }
         });
-        acc
-    });
-
-    let ans = match mirror.len() {
-        1 if smudge_fixed => mirror.get(0).unwrap().to_owned(),
-        _ => 0,
-    };
-    println!("columns before: {0}", ans);
-    ans
+    })
 }
 
 fn get_rows_above_mirror(valley: &str) -> usize {
     let ans = (1..valley.lines().count()).fold(0usize, |acc, i| {
         let valley_of_lines = valley.lines().collect::<Vec<&str>>();
-        let top = &valley_of_lines[..i];
-        let bottom = &valley_of_lines[i..];
+        let top = &valley_of_lines[..i].to_vec().into_iter().rev().flat_map(|c| c.chars()).collect::<String>();
+        let bottom = &valley_of_lines[i..].into_iter().flat_map(|c| c.chars()).collect::<String>();
 
-        let smudge_fixed = false;
-        bottom.into_iter().zip(top.into_iter().rev()).fold(0usize, |acc, (&a, &b)| {
-            match a.chars().zip(b.chars()).filter(|(&a, &b)| a != b).count() {
-                1 if !smudge_fixed => smudge_fixed = true,
-                
-            }
-        });
-        // return i if top and bottom only has one difference
-        // else return 0/acc
-        todo!();
-
+        match top.chars().zip(bottom.chars()).filter(|(a, b)| a != b).count() == 1 {
+            true => i,
+            false => acc,
+        }
     });
     println!("above rows: {0}", ans);
     ans
