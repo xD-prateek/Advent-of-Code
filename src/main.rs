@@ -10,27 +10,29 @@ fn main() {
 
 fn get_columns_before_mirror(valley: &str) -> usize {
     let lines_iter = valley.lines();
-    let mut potential_mirrors = vec!{0usize; lines_iter.by_ref().next().unwrap_or("").len()};
-    // for each line
-    //      for each i
-    //          iretain the index if a != b count == 0 or 1
+    let mut potential_mirrors = (1..lines_iter.clone().next().unwrap_or("").len()).map(|i| (i, false)).collect::<Vec<(usize, bool)>>();
 
     lines_iter.for_each(|line| {
-        let ans = potential_mirrors.iter_mut().enumerate().filter(|(&i, &val)| {
-            let (left, right) = line.split_at(i + 1);
-            match right.chars().zip(left.chars().rev()).filter(|(a, b)| a != b) == 1 {
-                true => {
-                    *val += 1;
+        potential_mirrors.retain_mut(|(idx, i)| {
+            let (left, right) = line.split_at(*idx);
+            match right.chars().zip(left.chars().rev()).filter(|(a, b)| a != b).count() {
+                0 => true,
+                1 if !*i => {
+                    *i = true;
                     true
                 }
-                false => false,
+                _ => false,
             }
         });
-    })
+    });
+    match potential_mirrors.into_iter().find(|c| c.1) {
+        Some(c) => c.0,
+        None => 0,
+    }
 }
 
 fn get_rows_above_mirror(valley: &str) -> usize {
-    let ans = (1..valley.lines().count()).fold(0usize, |acc, i| {
+    (1..valley.lines().count()).fold(0usize, |acc, i| {
         let valley_of_lines = valley.lines().collect::<Vec<&str>>();
         let top = &valley_of_lines[..i].to_vec().into_iter().rev().flat_map(|c| c.chars()).collect::<String>();
         let bottom = &valley_of_lines[i..].into_iter().flat_map(|c| c.chars()).collect::<String>();
@@ -39,7 +41,5 @@ fn get_rows_above_mirror(valley: &str) -> usize {
             true => i,
             false => acc,
         }
-    });
-    println!("above rows: {0}", ans);
-    ans
+    })
 }
