@@ -32,8 +32,8 @@ fn get_columns_before_mirror(valley: &str) -> usize {
 }
 
 fn get_rows_above_mirror(valley: &str) -> usize {
+    let valley_of_lines = valley.lines().collect::<Vec<&str>>();
     (1..valley.lines().count()).fold(0usize, |acc, i| {
-        let valley_of_lines = valley.lines().collect::<Vec<&str>>();
         let top = &valley_of_lines[..i].to_vec().into_iter().rev().flat_map(|c| c.chars()).collect::<String>();
         let bottom = &valley_of_lines[i..].into_iter().flat_map(|c| c.chars()).collect::<String>();
 
