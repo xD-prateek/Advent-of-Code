@@ -9,7 +9,7 @@ fn main() {
     let content = read_to_string(file_name).unwrap_or_else(|_| panic!("Error reading input."));
 
     let contraption = Contraption::new_from_string(content);
-    let ans = contraption.get_energized_tiles();
+    let ans = contraption.get_max_energized_tiles();
 
     println!("ANS: {ans}");
 }

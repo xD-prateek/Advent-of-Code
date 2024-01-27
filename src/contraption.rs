@@ -11,8 +11,27 @@ impl Contraption {
         }
     }
 
-    pub fn get_energized_tiles(&self) -> u32 {
-        let mut ray_list = vec!{ Rc::new(Context::new()) };
+    pub fn get_max_energized_tiles(&self) -> u32 {
+    	let x = self.map.len() as i32;
+    	let y = self.map.get(0).unwrap().len() as i32;
+
+    	let mut ans = 0u32;
+
+    	(0..x).for_each(|l| {
+    		ans = ans.max(self.get_energized_tiles(Context::new_from((l, -1), (0, 1))));
+    		ans = ans.max(self.get_energized_tiles(Context::new_from((l, y), (0, -1))));
+    	});
+
+    	(0..y).for_each(|e| {
+    		ans = ans.max(self.get_energized_tiles(Context::new_from((-1, e), (1, 0))));
+    		ans = ans.max(self.get_energized_tiles(Context::new_from((x, e), (-1, 0))));
+    	});
+
+    	ans
+    }
+
+    fn get_energized_tiles(&self, ctx: Context) -> u32 {
+        let mut ray_list = vec!{ Rc::new(ctx) };
         let mut ray_cache = Vec::new();
 
         while !ray_list.is_empty() {
@@ -72,13 +91,6 @@ struct Context {
 }
 
 impl Context {
-    fn new() -> Self {
-        Self {
-            coordinate: (0, -1),
-            del_coordinate: (0, 1),
-        }
-    }
-
     fn new_from(coordinate: (i32, i32), del_coordinate: (i32, i32)) -> Self {
         Self {
             coordinate,
