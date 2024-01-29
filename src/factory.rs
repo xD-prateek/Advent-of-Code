@@ -25,13 +25,13 @@ impl Factory {
         let mut seen_nodes = HashSet::new();
 
         while let Some(node) = pq.pop() {
-
             if node.coordinate == end_coordinate {
                 return node.heat;
             }
 
-            if !seen_nodes.contains(&node) {
-                seen_nodes.insert(Rc::clone(&node));
+            let new_node_metadata = (node.coordinate, node.del_coordinate, node.consecutive_steps);
+            if !seen_nodes.contains(&new_node_metadata) {
+                seen_nodes.insert(new_node_metadata);
 
                 directions.iter().filter_map(|&del_coor| {
                     match del_coor == node.del_coordinate {
@@ -74,7 +74,7 @@ struct Node {
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        self.coordinate == other.coordinate
+        self.coordinate == other.coordinate && self.del_coordinate == other.del_coordinate && self.heat == other.heat
     }
 }
 
