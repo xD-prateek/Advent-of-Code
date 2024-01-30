@@ -11,7 +11,6 @@ fn main() {
     println!("ANS: {ans}");
 }
 
-#[derive(Debug)]
 struct Trench {
     map: Vec<(i32, i32)>,
     blocks: i32,
