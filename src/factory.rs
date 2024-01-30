@@ -53,6 +53,7 @@ impl Factory {
                 });
             }
         }
+        println!("Node not found.");
         0
     }
 
@@ -64,7 +65,6 @@ impl Factory {
     }
 }
 
-#[derive(Hash)]
 struct Node {
     heat: u32,
     coordinate: (isize, isize),
