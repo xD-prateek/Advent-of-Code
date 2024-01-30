@@ -2,14 +2,16 @@ use std::{collections::{BinaryHeap, HashSet}, rc::Rc};
 
 pub struct Factory {
     map: Vec<Vec<u32>>,
-    consecutive_step_count: u32,
+    consecutive_min_step_count: u32,
+    consecutive_max_step_count: u32,
 }
 
 impl Factory {
-    pub fn new_from_string(content: String, consecutive_step_count: u32) -> Self {
+    pub fn new_from_string(content: String, consecutive_min_step_count: u32, consecutive_max_step_count: u32) -> Self {
         Self {
             map: content.lines().map(|line| line.chars().map(|c| c.to_digit(10).unwrap_or_else(|| panic!("Error parsing input"))).collect::<Vec<u32>>()).collect::<Vec<Vec<u32>>>(),
-            consecutive_step_count,
+            consecutive_min_step_count,
+            consecutive_max_step_count,
         }
     }
 
@@ -25,7 +27,8 @@ impl Factory {
         let mut seen_nodes = HashSet::new();
 
         while let Some(node) = pq.pop() {
-            if node.coordinate == end_coordinate {
+            // println!("Got new node: {0:?}", node);
+            if node.coordinate == end_coordinate && node.consecutive_steps >= 4 {
                 return node.heat;
             }
 
@@ -34,12 +37,12 @@ impl Factory {
                 seen_nodes.insert(new_node_metadata);
 
                 directions.iter().filter_map(|&del_coor| {
-                    match del_coor == node.del_coordinate {
+                    match del_coor == node.del_coordinate || node.del_coordinate == (0, 0) {
                         false => match del_coor == (-node.del_coordinate.0, -node.del_coordinate.1) {
-                            false => Some((del_coor, 1)),
-                            true => None,
+                            false if node.consecutive_steps >= self.consecutive_min_step_count => Some((del_coor, 1)),
+                            _ => None,
                         },
-                        true => match node.consecutive_steps < self.consecutive_step_count {
+                        true => match node.consecutive_steps < self.consecutive_max_step_count {
                             false => None,
                             true => Some((del_coor, node.consecutive_steps + 1)),
                         },
@@ -47,6 +50,7 @@ impl Factory {
                 }).for_each(|(del_coordinate, step)| {
                     let new_coordinate = (node.coordinate.0 + del_coordinate.0, node.coordinate.1 + del_coordinate.1);
                     if let Some(heat) = self.get_heat_loss_at_block(new_coordinate) {
+                        // println!("New coordinate for ({0}, {1}) is ({2}, {3}). {4} + {5}", node.coordinate.0, node.coordinate.1, new_coordinate.0, new_coordinate.1, heat, node.heat);
                         let new_node = Node::new_from(heat + node.heat, new_coordinate, del_coordinate, step);
                         pq.push(Rc::new(new_node));
                     }
@@ -65,6 +69,7 @@ impl Factory {
     }
 }
 
+#[derive(Debug)]
 struct Node {
     heat: u32,
     coordinate: (isize, isize),
