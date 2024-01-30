@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::read_to_string};
+use std::fs::read_to_string;
 
 fn main() {
     let file_name: &str = "src/input.txt";
@@ -12,18 +12,18 @@ fn main() {
 }
 
 struct Trench {
-    map: Vec<(i32, i32)>,
-    blocks: i32,
+    map: Vec<(isize, isize)>,
+    blocks: isize,
 }
 
 impl Trench {
     fn new_from_str(s: String) -> Self {
-        let direction_map = vec!{ ('U', (-1, 0)), ('D', (1, 0)), ('R', (0, 1)), ('L', (0, -1)) }.into_iter().collect::<HashMap<char, (i32, i32)>>();
+        let directions_map = vec!{ (0, 1), (1, 0), (0, -1), (-1, 0) };
 
-        s.lines().fold(Self { map: vec!{ (0, 0) }, blocks: 0i32 }, |mut acc, line| {
-            let mut split = line.split_whitespace().take(2).collect::<Vec<&str>>().into_iter();
-            let direction = direction_map.get(&split.next().unwrap_or_else(|| panic!("error reading direction.")).chars().next().unwrap()).unwrap();
-            let length = split.next().unwrap_or_else(|| panic!("error reading length.")).parse::<i32>().unwrap_or_else(|_| panic!("error parsing length"));
+        s.lines().fold(Self { map: vec!{ (0, 0) }, blocks: 0isize }, |mut acc, line| {
+            let (length, direction) = line.split_whitespace().nth(2).unwrap()[2..8].split_at(5);
+            let direction = directions_map.get(direction.parse::<usize>().unwrap_or_else(|_| panic!("error parsing length."))).unwrap_or_else(|| panic!("wrong direction input."));
+            let length = isize::from_str_radix(length, 16).unwrap_or_else(|_| panic!("error converting hexadecimal to decimal."));
             acc.blocks += length;
             let last = acc.map.last().unwrap();
             acc.map.push((last.0 + direction.0 * length, last.1 + direction.1 * length));
@@ -31,9 +31,9 @@ impl Trench {
         })
     }
 
-    fn get_area(&self) -> u32 {
-        ((self.blocks + self.map.windows(2).fold(0i32, |acc, pos| {
+    fn get_area(&self) -> usize {
+        ((self.blocks + self.map.windows(2).fold(0isize, |acc, pos| {
             acc + pos[0].0 * pos[1].1 - pos[0].1 * pos[1].0
-        }).abs()) / 2 + 1) as u32
+        }).abs()) / 2 + 1) as usize
     }
 }
