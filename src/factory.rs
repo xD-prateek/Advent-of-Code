@@ -29,7 +29,7 @@ impl Factory {
                 return node.heat;
             }
 
-            let new_node_metadata = (node.coordinate, node.del_coordinate, node.consecutive_steps);
+            let new_node_metadata = node.get_metadata();
             if !seen_nodes.contains(&new_node_metadata) {
                 seen_nodes.insert(new_node_metadata);
 
@@ -100,5 +100,9 @@ impl Node {
             del_coordinate,
             consecutive_steps,
         }
+    }
+
+    fn get_metadata(&self) -> ((isize, isize), (isize, isize), u32) {
+        (self.coordinate, self.del_coordinate, self.consecutive_steps)
     }
 }
