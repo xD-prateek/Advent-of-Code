@@ -145,10 +145,6 @@ enum Pulse {
 
 impl PartialEq for Pulse {
 	fn eq(&self, other: &Self) -> bool {
-		match (self, other) {
-			(Self::High, Self::High) => true,
-			(Self::Low, Self::Low) => true,
-			_ => false,
-		}     
+		matches!((self, other), (Self::High, Self::High) | (Self::Low, Self::Low))     
 	}    
 }
