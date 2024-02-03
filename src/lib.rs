@@ -6,12 +6,20 @@ impl<'a> Map<'a> {
 	pub fn new_from_str(content: &'a str) -> Self {
 		let modules = content.lines().fold(HashMap::new(), |mut acc, line| {
 			let (type_and_name, destination) = line.split_once(" -> ").unwrap_or_else(|| panic!("invalid input format of line: {line}"));
-			let (switch_type, name) = match type_and_name.chars().next().unwrap_or_else(|| panic!("error processing line: {line}")) {
-				'%' => (Switch::get_default_flipflop(), &type_and_name[1..]),
-				'&' => (Switch::get_default_conjugation(), &type_and_name[1..]),
-				_ if type_and_name == "broadcaster" => (Switch::get_default_broadcaster(), type_and_name),
-				_ => panic!("invalid switch type found: {type_and_name}"),
+
+			let (switch_type, name) = if let Some(name) = type_and_name.strip_prefix('%') {
+				(Switch::get_default_flipflop(), name)
+			}
+			else if let Some(name) = type_and_name.strip_prefix('&') {
+				(Switch::get_default_conjugation(), name)
+			}
+			else if type_and_name == "broadcaster" {
+				(Switch::get_default_broadcaster(), type_and_name)
+			}
+			else {
+				panic!("invalid switch type found: {type_and_name}")
 			};
+
 			acc.insert(name, Module::new_from_values(switch_type, destination.split(", ").collect::<Vec<&str>>()));
 			acc
 		});
@@ -30,23 +38,49 @@ impl<'a> Map<'a> {
         Self(modules)
     }
 
-    pub fn get_pulses_for_cycles(&self, cycles: usize) -> usize {
-    	let sum = (0..cycles).into_iter().fold((0, 0), |acc, _| {
-    		let (lo, hi) = self.apply_one_cycle();
-    		(acc.0 + lo, acc.1 + hi)
-    	});
-    	sum.0 * sum.1
+    pub fn get_cycles_till_final_machine(&self, final_machine: &str) -> usize {
+    	// the module feeding into final machine is a conjunction module
+    	let feeding_conjugation_machine = self.0.iter().find_map(|(&k, v)| {
+    		match v.destination.contains(&final_machine) {
+    			true => Some(k),
+    			false => None,
+    		}
+    	}).unwrap();
+
+    	let mut query_machines = self.0.iter().filter_map(|(&k, v)| {
+    		match v.destination.contains(&feeding_conjugation_machine) {
+    			true => Some((k, 0)),
+    			false => None,
+    		}
+    	}).collect::<HashMap<&str, usize>>();
+
+    	let mut cycles = 1;
+
+    	while !query_machines.values().all(|&v| v > 0) {
+    		self.get_cycle_count_for_low_pulse(&mut query_machines, cycles);
+    		cycles += 1;
+    	}
+
+    	query_machines.into_values().reduce(|acc, v| acc * v / Self::gcd(acc, v)).unwrap_or_else(|| panic!("error getting LCM."))
     }
 
-    fn apply_one_cycle(&self) -> (usize, usize) {
+    fn gcd(num1: usize, num2: usize) -> usize {
+    	match num2 == 0 {
+    		true => num1,
+    		false => Self::gcd(num2, num1 % num2),
+    	}
+    }
+
+    fn get_cycle_count_for_low_pulse(&self, query_machine: &mut HashMap<&'a str, usize>, cycles: usize) -> bool {
     	let mut q = VecDeque::from([ Event::new_from_values("button", &Pulse::Low, "broadcaster") ]);
 
-    	let mut total = (0, 0);
     	while let Some(event) = q.pop_front() {
-    		match event.pulse {
-    			Pulse::High => total.1 += 1,
-    			Pulse::Low => total.0 += 1,
-    		};
+
+    		query_machine.entry(event.source).and_modify(|v| {
+    			if let Pulse::High = event.pulse {
+    				*v = cycles;
+    			}
+    		});
 
     		if let Some(next_module) = self.0.get(event.destination) {
     			match &next_module.switch {
@@ -68,6 +102,7 @@ impl<'a> Map<'a> {
     						true => Pulse::Low,
     						false => Pulse::High,
     					};
+
     					next_module.destination.iter().for_each(|&des| {
     						q.push_back(Event::new_from_values(event.destination, &new_pulse, des));
     					});
@@ -78,7 +113,7 @@ impl<'a> Map<'a> {
     			};
     		}
     	}
-    	total
+    	false
     }
 }
 
