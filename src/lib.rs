@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 type Graph = HashMap<(isize, isize), Vec<((isize, isize), usize)>>;
 
@@ -28,19 +28,20 @@ impl SnowIsland {
             poi.append(&mut vec!{ self.start, self.end });
             poi
         };
-        let directions = HashMap::from([('^', vec!{ (-1, 0) }), ('>', vec!{ (0, 1) }), ('v', vec!{ (1, 0) }), ('<', vec!{ (0, -1) }), ('.', vec!{ (-1, 0), (0, 1), (1, 0), (0, -1) })]);
+        // let directions = HashMap::from([('^', vec!{ (-1, 0) }), ('>', vec!{ (0, 1) }), ('v', vec!{ (1, 0) }), ('<', vec!{ (0, -1) }), ('.', vec!{ (-1, 0), (0, 1), (1, 0), (0, -1) })]);
+        let directions = [ (-1, 0), (0, 1), (1, 0), (0, -1) ];
         let adjacency_graph = poi.iter().fold(HashMap::new(), |mut acc: Graph, &point| {
-            let mut q = vec!{ (point, self.get_char_at(point).unwrap(), 0usize) };
+            let mut q = vec!{ (point, 0) };
             let mut visited = vec!{ point };
-            while let Some((coor, character, dist)) = q.pop() {
+            while let Some((coor, dist)) = q.pop() {
                 if dist != 0 && poi.contains(&coor) {
                     acc.entry(point).and_modify(|list| list.push((coor, dist))).or_insert(vec!{ (coor, dist) });
                 }
                 else {
-                    directions.get(&character).unwrap_or_else(|| panic!("invalid character found: {character}")).iter().map(|(del_x, del_y)| (coor.0 + del_x, coor.1 + del_y)).for_each(|new_coor| {
+                    directions.iter().map(|(del_x, del_y)| (coor.0 + del_x, coor.1 + del_y)).for_each(|new_coor| {
                         if let Some(ch) = self.get_char_at(new_coor) {
                             if ch != '#' && !visited.contains(&new_coor) {
-                                q.push((new_coor, ch, dist + 1));
+                                q.push((new_coor, dist + 1));
                                 visited.push(new_coor);
                             }
                         }
@@ -49,15 +50,23 @@ impl SnowIsland {
             }
             acc
         });
-        self.get_max_distance(self.start, &adjacency_graph)
+        self.get_max_distance(self.start, &adjacency_graph, &mut HashSet::new())
     }
 
-    fn get_max_distance(&self, coor: (isize, isize), graph: &Graph) -> usize {
+    fn get_max_distance(&self, coor: (isize, isize), graph: &Graph, visited: &mut HashSet<(isize, isize)>) -> usize {
         match coor == self.end {
             true => 0,
-            false => graph.get(&coor).unwrap_or(&Vec::new()).iter().fold(0, |acc, &(next_coor, dist)| {
-                acc.max(dist + self.get_max_distance(next_coor, graph))
-            }),
+            false => { 
+            	visited.insert(coor);
+            	let max_len = graph.get(&coor).unwrap_or(&Vec::new()).iter().fold(0, |acc, &(next_coor, dist)| {
+            		match visited.contains(&next_coor) {
+            			true => acc,
+            			false => acc.max(dist + self.get_max_distance(next_coor, graph, visited)),
+            		}
+            	});
+            	visited.remove(&coor);
+            	max_len
+            },
         }
     }
 
