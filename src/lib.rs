@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 pub struct Stack (Vec<Brick>);
 
@@ -19,19 +19,27 @@ impl Stack {
 
     pub fn get_bricks_safe_to_disintegrate(&self) -> usize {
         let mut supports = vec!{ Vec::new(); self.0.len() };
-        let mut supported_by_len = vec!{ 0; self.0.len() };
+        let mut supported_by = vec!{ Vec::new(); self.0.len() };
         self.0.iter().enumerate().for_each(|(i, lower_brick)| {
             self.0.iter().enumerate().skip(i).filter(|(_, upper_brick)| upper_brick.overlaps(lower_brick) && upper_brick.0.2 == lower_brick.1.2 + 1).for_each(|(j, _)| {
                 supports.get_mut(i).unwrap_or_else(|| panic!("index out of bounds. {j}")).push(j);
-                *supported_by_len.get_mut(j).unwrap_or_else(|| panic!("index out of bounds. {j}")) += 1;
+                supported_by.get_mut(j).unwrap_or_else(|| panic!("index out of bounds. {j}")).push(i);
             });
         });
 
         (0..self.0.len()).fold(0, |acc, i| {
-            match supports.get(i).unwrap_or_else(|| panic!("index out of bounds. {i}")).iter().all(|&j| supported_by_len.get(j).unwrap_or_else(|| panic!("index out of bounds. {j}")) > &1) {
-                true => acc + 1,
-                false => acc,
+            let mut q = VecDeque::from_iter(supports.get(i).unwrap_or_else(|| panic!("index out of bounds. {i}")).iter().filter(|&&k| supported_by.get(k).unwrap_or_else(|| panic!("index out of bounds. {k}")).len() == 1).copied());
+            let mut falling = q.iter().copied().collect::<HashSet<usize>>();
+            falling.insert(i);
+            while let Some(j) = q.pop_front() {
+                supports.get(j).unwrap_or_else(|| panic!("index out of bounds. {j}")).iter().for_each(|&k| {
+                    if !falling.contains(&k) && supported_by.get(k).unwrap_or_else(|| panic!("index out of bounds. {k}")).iter().all(|l| falling.contains(l)) {
+                        falling.insert(k);
+                        q.push_back(k);
+                    }
+                });
             }
+            acc + falling.len() - 1
         })
     }
 }
