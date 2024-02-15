@@ -1,7 +1,6 @@
 use std::{error::Error, fmt::Display};
-use nalgebra::{Matrix1x6, Matrix6, Matrix6x1, Point2, Point3, Vector3};
+use nalgebra::{Matrix6, Matrix6x1};
 
-#[derive(Debug)]
 pub struct Hail(Vec<HailStone>);
 
 impl Hail {
@@ -9,70 +8,73 @@ impl Hail {
 		Self(content.lines().enumerate().map(|(_, line)| HailStone::new_from_str(line)).collect())
 	}
 
-	pub fn determine_position(&self) -> f64 {
-		// 19, 13, 30 @ -2, 1, -2
-		// 18, 19, 22 @ -1, -1, -2
-		// 20, 25, 34 @ -2, -2, -4
-		// 12, 31, 28 @ -1, -2, -1
-		// 20, 19, 15 @ 1, -5, -3
+	pub fn determine_position(&self) -> i64 {
+		let equations_count = 4;
+		let mut window_iter = self.0.windows(equations_count);
 
-
-		// calculate x, y, z, vx, vy, vz for 3 Hailstones
-		let mut option_rock: Option<HailStone> = None;
-		self.0.windows(3).fold(true, |mut acc, hailstones| {
-			if let Ok(potential_rock) = self.determine_position_for_using_hailstones(hailstones) {
-				println!("potential_rock: {potential_rock:?}");
-				match &mut option_rock {
-					None => option_rock = Some(potential_rock),
-					Some(rock) => acc = acc && potential_rock == *rock,
+		loop {
+			if let Some(hailstones) = window_iter.next() {
+				match self.determine_position_for_using_hailstones(hailstones, equations_count) {
+					Ok(hs) => {
+						break hs.get_coordinates_sum();
+					},
+					Err(e) => println!("{e}"),
 				}
 			}
 			else {
-				println!("error!");
+				eprintln!("No solution.");
 			}
-			acc
-		});
-
-		match option_rock {
-			None => f64::default(),
-			Some(rock) => rock.get_coordinates_sum(),
 		}
 	}
 
-	fn determine_position_for_using_hailstones(&self, hailstones: &[HailStone]) -> Result<HailStone, InconsistentSystem>{
-		if hailstones.len() == 3 {
-			let v1 = hailstones.get(0).unwrap_or_else(|| panic!("error getting vector 1.")).velocity;
-			let v2 = hailstones.get(1).unwrap_or_else(|| panic!("error getting vector 2.")).velocity;
-			let v3 = hailstones.get(2).unwrap_or_else(|| panic!("error getting vector 3.")).velocity;
-			// relative vel
-			let v_21 = v2 - v1;
-			let v_32 = v3 - v2;
-			let v_13 = v1 - v3;
+	fn determine_position_for_using_hailstones(&self, hailstones: &[HailStone], equations: usize) -> Result<HailStone, InconsistentSystem>{
+		if hailstones.len() == equations {
+			// V1 = velocities[0]
+			// V2 = velocities[1]
+			// V3 = velocities[2]
+			// V4 = velocities[3]
+			// P1 = positions[0]
+			// P2 = positions[1]
+			// P3 = positions[2]
+			// P4 = positions[3]
+			let (velocities, positions): (Vec<_>, Vec<_>) = hailstones.iter().map(|hailstone| (Self::get_f64_tuple(hailstone.velocity), Self::get_f64_tuple(hailstone.position))).unzip();
+			// V21 = rel_velocities[0]
+			// V32 = rel_velocities[1]
+			// V43 = rel_velocities[2]
+			// V54 = rel_velocities[3]
+			let rel_velocities = velocities.windows(2).map(|v| Self::get_f64_tuple_difference(*v.get(1).unwrap(), *v.first().unwrap())).collect::<Vec<(f64, f64, f64)>>();
+			// P21 = rel_positions[0]
+			// P32 = rel_positions[1]
+			// P43 = rel_positions[2]
+			// P54 = rel_positions[3]
+			let rel_positions = positions.windows(2).map(|p| Self::get_f64_tuple_difference(*p.get(1).unwrap(), *p.first().unwrap())).collect::<Vec<(f64, f64, f64)>>();
 
-			let p1 = hailstones.get(0).unwrap_or_else(|| panic!("error getting point 1.")).position;
-			let p2 = hailstones.get(1).unwrap_or_else(|| panic!("error getting point 2.")).position;
-			let p3 = hailstones.get(2).unwrap_or_else(|| panic!("error getting point 3.")).position;
-			// relative pos
-			let p_21 = p2 - p1;
-			let p_32 = p3 - p2;
-			let p_13 = p1 - p3;
-
-			let coefficient_matrix = Matrix6::new(v_21.y, -v_21.x, 0f64, -p_21.y, p_21.x, 0f64, v_32.y, -v_32.x, 0f64, -p_32.y, p_32.x, 0f64, v_13.y, -v_13.x, 0f64, -p_13.y, p_13.x, 0f64, 0f64, v_21.z, -v_21.y, 0f64, -p_21.z, -p_21.y, 0f64, v_32.z, -v_32.y, 0f64, -p_32.z, p_32.y, 0f64, v_13.z, -v_13.y, 0f64, -p_13.z, p_13.y);
-			let constant_matrix = Matrix6x1::new(p1.y * v1.x + p2.x * v2.y - p2.y * v2.x - p1.x * v1.y, p2.y * v2.x + p3.x * v3.y - p3.y * v3.x - p2.x * v2.y, p3.y * v3.x + p1.x * v1.y - p1.y * v1.x - p3.x * v3.y, p1.z * v1.y + p2.y * v2.z - p2.z * v2.y - p1.y * v1.z, p2.z * v2.y + p3.y * v3.z - p3.z * v3.y - p2.y * v2.z, p3.z * v3.y + p1.y * v1.z - p1.z * v1.y - p3.y * v3.z);
-			// println!("coefficient_matrix: {coefficient_matrix}");
-			// println!("constant_matrix: {constant_matrix}");
-			if let Some(inv) = coefficient_matrix.try_inverse() {
-				// println!("inv: {inv}");
-				let variable_matrix = inv * constant_matrix;
-				Ok(HailStone { position: Point3::new(variable_matrix.x, variable_matrix.y, variable_matrix.z), velocity: Vector3::new(variable_matrix.w, variable_matrix.a, variable_matrix.b) })
-			}
-			else {
-				Err(InconsistentSystem)
+			let coefficient_matrix = Matrix6::new(rel_velocities[0].1, -rel_velocities[0].0, 0f64, -rel_positions[0].1, rel_positions[0].0, 0f64, rel_velocities[1].1, -rel_velocities[1].0, 0f64, -rel_positions[1].1, rel_positions[1].0, 0f64, rel_velocities[2].1, -rel_velocities[2].0, 0f64, -rel_positions[2].1, rel_positions[2].0, 0f64, 0f64, rel_velocities[0].2, -rel_velocities[0].1, 0f64, -rel_positions[0].2, rel_positions[0].1, 0f64, rel_velocities[1].2, -rel_velocities[1].1, 0f64, -rel_positions[1].2, rel_positions[1].1, 0f64, rel_velocities[2].2, -rel_velocities[2].1, 0f64, -rel_positions[2].2, rel_positions[2].1);
+			match coefficient_matrix.try_inverse() {
+				Some(inv) => {
+					let constant_matrix = Matrix6x1::new(positions[0].1 * velocities[0].0 - positions[1].1 * velocities[1].0 - positions[0].0 * velocities[0].1 + positions[1].0 * velocities[1].1, positions[1].1 * velocities[1].0 - positions[2].1 * velocities[2].0 - positions[1].0 * velocities[1].1 + positions[2].0 * velocities[2].1, positions[2].1 * velocities[2].0 - positions[3].1 * velocities[3].0 - positions[2].0 * velocities[2].1 + positions[3].0 * velocities[3].1, positions[0].2 * velocities[0].1 - positions[1].2 * velocities[1].1 - positions[0].1 * velocities[0].2 + positions[1].1 * velocities[1].2, positions[1].2 * velocities[1].1 - positions[2].2 * velocities[2].1 - positions[1].1 * velocities[1].2 + positions[2].1 * velocities[2].2, positions[2].2 * velocities[2].1 - positions[3].2 * velocities[3].1 - positions[2].1 * velocities[2].2 + positions[3].1 * velocities[3].2);
+					let variable_matrix = inv * constant_matrix;
+					Ok(HailStone { position: Self::get_i64_tuple((variable_matrix.x, variable_matrix.y, variable_matrix.z)), velocity: Self::get_i64_tuple((variable_matrix.w, variable_matrix.a, variable_matrix.b)) })
+				},
+				None => Err(InconsistentSystem),
 			}
 		}
 		else {
 			Err(InconsistentSystem)
 		}
+	}
+
+	fn get_i64_tuple(t: (f64, f64, f64)) -> (i64, i64, i64) {
+		(t.0.round() as i64, t.1.round() as i64, t.2.round() as i64)
+	}
+
+	fn get_f64_tuple_difference(a: (f64, f64, f64), b: (f64, f64, f64)) -> (f64, f64, f64) {
+		// a - b
+		(a.0 - b.0, a.1 - b.1, a.2 - b.2)
+	}
+
+	fn get_f64_tuple(t: (i64, i64, i64)) -> (f64, f64, f64) {
+		(t.0 as f64, t.1 as f64, t.2 as f64)
 	}
 }
 
@@ -87,29 +89,22 @@ impl Display for InconsistentSystem {
     }
 }
 
-#[derive(Debug)]
 struct HailStone {
-    position: Point3<f64>,
-    velocity: Vector3<f64>,
-}
-
-impl PartialEq for HailStone {
-    fn eq(&self, other: &Self) -> bool {
-    	self.position.eq(&other.position) && self.velocity.eq(&other.velocity)
-    }
+    position: (i64, i64, i64),
+    velocity: (i64, i64, i64),
 }
 
 impl HailStone {
 	fn new_from_str(hailstone: &str) -> Self {
-		let hailstone = hailstone.replace(" @", ",");
-		let mut data_nums = hailstone.split(", ").map(|coor| coor.parse::<f64>().unwrap_or_else(|_| panic!("unable to parse coordinate: {coor}")));
+		let hailstone = hailstone.replace("  ", " ").replace(" @", ",");
+		let mut data_nums = hailstone.split(", ").map(|coor| coor.parse::<i64>().unwrap_or_else(|_| panic!("unable to parse coordinate: {coor}")));
 		Self {
-			position: Point3::new(data_nums.next().unwrap_or_else(|| panic!("error parsing position input x for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing position input y for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing position input z for line {hailstone}"))),
-			velocity: Vector3::new(data_nums.next().unwrap_or_else(|| panic!("error parsing velocity input x for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing velocity input x for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing velocity input x for line {hailstone}"))),
+			position: (data_nums.next().unwrap_or_else(|| panic!("error parsing position input x for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing position input y for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing position input z for line {hailstone}"))),
+			velocity: (data_nums.next().unwrap_or_else(|| panic!("error parsing velocity input x for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing velocity input x for line {hailstone}")), data_nums.next().unwrap_or_else(|| panic!("error parsing velocity input x for line {hailstone}"))),
 		}
 	}
 
-	fn get_coordinates_sum(&self) -> f64 {
-		self.position.coords.iter().sum()
+	fn get_coordinates_sum(&self) -> i64 {
+		self.position.0 + self.position.1 + self.position.2
 	}
 }
